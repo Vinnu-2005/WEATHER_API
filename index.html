@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Updates</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: linear-gradient(to bottom, #87CEEB, #1E90FF);
+            color: white;
+            animation: fadeIn 2s ease-in;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #weather {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            animation: slideUp 1.5s ease-out;
+        }
+        button {
+            margin-top: 15px;
+            padding: 10px 15px;
+            background-color: #4682B4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #5A9BD4;
+        }
+        .forecast {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        .day {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 10px;
+            margin: 5px;
+            text-align: center;
+            width: 100px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .day img {
+            width: 50px;
+            height: 50px;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        .fade-in {
+            animation: fadeIn 1.5s;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Weather Updates</h1>
+        <p>Get real-time weather updates for any city!</p>
+    </header>
+    <div id="weather">
+        <input type="text" id="city" placeholder="Enter city name" />
+        <button onclick="fetchWeather()">Get Weather</button>
+        <button onclick="fetchCurrentLocationWeather()">Use Current Location</button>
+        <div id="output"></div>
+        <div class="forecast" id="forecast"></div>
+    </div>
+
+    <script>
+        async function fetchWeather() {
+            const city = document.getElementById('city').value.trim();
+            const output = document.getElementById('output');
+            const forecastDiv = document.getElementById('forecast');
+
+            if (!city) {
+                output.innerHTML = '<p class="fade-in">Please enter a city name.</p>';
+                forecastDiv.innerHTML = '';
+                return;
+            }
+
+            const apiKey = '03cf6aeb88336735b5e74212f628aaef'; // Replace with your API key
+            const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
+            const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}&units=metric`;
+
+            try {
+                const weatherResponse = await fetch(weatherUrl);
+                if (!weatherResponse.ok) {
+                    throw new Error('City not found');
+                }
+                const weatherData = await weatherResponse.json();
+                output.innerHTML = `
+                    <div class="fade-in">
+                        <h2>${weatherData.name}, ${weatherData.sys.country}</h2>
+                        <p>Temperature: ${weatherData.main.temp}°C</p>
+                        <p>Weather: ${weatherData.weather[0].description}</p>
+                        <p>Humidity: ${weatherData.main.humidity}%</p>
+                        <p>Wind Speed: ${weatherData.wind.speed} m/s</p>
+                    </div>
+                `;
+
+                const forecastResponse = await fetch(forecastUrl);
+                const forecastData = await forecastResponse.json();
+
+                const days = {};
+                forecastData.list.forEach((entry) => {
+                    const date = new Date(entry.dt * 1000);
+                    const day = date.toLocaleDateString('en-US', { weekday: 'long' });
+                    if (!days[day]) {
+                        days[day] = entry;
+                    }
+                });
+
+                forecastDiv.innerHTML = Object.keys(days).map(day => {
+                    const dayData = days[day];
+                    const icon = dayData.weather[0].icon;
+                    return `
+                        <div class="day fade-in">
+                            <h3>${day}</h3>
+                            <img src="https://openweathermap.org/img/wn/${icon}@2x.png" alt="${dayData.weather[0].description}" />
+                            <p>${dayData.main.temp}°C</p>
+                            <p>${dayData.weather[0].description}</p>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                output.innerHTML = `<p class="fade-in">Error: ${error.message}. Please check the city name or try another location.</p>`;
+                forecastDiv.innerHTML = '';
+            }
+        }
+
+        async function fetchCurrentLocationWeather() {
+            const output = document.getElementById('output');
+            const forecastDiv = document.getElementById('forecast');
+
+            if (!navigator.geolocation) {
+                output.innerHTML = '<p class="fade-in">Geolocation is not supported by your browser.</p>';
+                forecastDiv.innerHTML = '';
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const { latitude, longitude } = position.coords;
+                const apiKey = 'YOUR_API_KEY'; // Replace with your API key
+                const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric`;
+                const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric`;
+
+                try {
+                    const weatherResponse = await fetch(weatherUrl);
+                    if (!weatherResponse.ok) {
+                        throw new Error('Unable to fetch weather for your location');
+                    }
+                    const weatherData = await weatherResponse.json();
+                    output.innerHTML = `
+                        <div class="fade-in">
+                            <h2>${weatherData.name}, ${weatherData.sys.country}</h2>
+                            <p>Temperature: ${weatherData.main.temp}°C</p>
+                            <p>Weather: ${weatherData.weather[0].description}</p>
+                            <p>Humidity: ${weatherData.main.humidity}%</p>
+                            <p>Wind Speed: ${weatherData.wind.speed} m/s</p>
+                        </div>
+                    `;
+
+                    const forecastResponse = await fetch(forecastUrl);
+                    const forecastData = await forecastResponse.json();
+
+                    const days = {};
+                    forecastData.list.forEach((entry) => {
+                        const date = new Date(entry.dt * 1000);
+                        const day = date.toLocaleDateString('en-US', { weekday: 'long' });
+                        if (!days[day]) {
+                            days[day] = entry;
+                        }
+                    });
+
+                    forecastDiv.innerHTML = Object.keys(days).map(day => {
+                        const dayData = days[day];
+                        const icon = dayData.weather[0].icon;
+                        return `
+                            <div class="day fade-in">
+                                <h3>${day}</h3>
+                                <img src="https://openweathermap.org/img/wn/${icon}@2x.png" alt="${dayData.weather[0].description}" />
+                                <p>${dayData.main.temp}°C</p>
+                                <p>${dayData.weather[0].description}</p>
+                            </div>
+                        `;
+                    }).join('');
+
+                } catch (error) {
+                    output.innerHTML = `<p class="fade-in">Error: ${error.message}</p>`;
+                    forecastDiv.innerHTML = '';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+
